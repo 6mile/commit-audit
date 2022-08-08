@@ -1,56 +1,72 @@
 #!/bin/bash
+red=$'\e[1;31m'
+grn=$'\e[1;32m'
+yel=$'\e[1;33m'
+blu=$'\e[1;34m'
+mag=$'\e[1;35m'
+cyn=$'\e[1;36m'
+end=$'\e[0m'
 
 set -e
 
-  if [ "$1" == "-h" -o "$1" == "--help" ]; then
-    echo "usage: commit-check [-h|--help] [options]" >&2
-    echo "Show long refs for all unsigned/unverified git commits in the current tree." >&2
-    echo "  -h, --help  Display this usage guide." >&2
-    echo "  options     Options to be passed to the invocation of git log." >&2
-    return 1
-  fi
-  
-  if [[ -z $2 ]]; then
-	git clone $2 ./git-commit-audit-temp-dir && export clonesuccess="1"
+if [ "$1" == "-h" -o "$1" == "--help" ]; then
+echo "usage: git-commit-audit.sh [-h|--help] [Git URL]" >&2
+echo "See statistics on git commits for a code repository." >&2
+echo "  -h, --help  Display this usage guide." >&2
+echo "  Git URL  If you provide an optional url path (via https) to a remote git repository" >&2
+echo "  Example: git-commit-audit.sh https://github.com/CycloneDX/cyclonedx-python"
+echo
+exit 0
+fi
+
+if [[ -n $1 ]]; then
+	if [[ ! -d ./git-commit-audit-temp-dir ]]; then mkdir ./git-commit-audit-temp-dir;fi
+	git clone "$1" ./git-commit-audit-temp-dir && echo "Git Clone was a success" && export clonesuccess="1"
 	if [[ $clonesuccess = "1" ]]; then 
 		cd ./git-commit-audit-temp-dir
 	elif [[ $clonesuccess != "1" ]]; then 
-		echo "Git Clone did not work" && exit 1
+		echo "Git Clone did not work.  Exiting.... "
+		exit 1
 	fi
-  fi
+fi
 
-  GITARY=$(git log --pretty='format:%H|%aN|%s|%G?' $@)
-  
-  # check if there are any commits in git
-  if [[ -z $GITARY ]]; then echo "No commits found.  Exiting... "; exit 1; fi
+GITARY=$(git log --pretty='format:%H|%aN|%s|%G?')
 
-  NUMBERCOMMITS=$(echo "$GITARY" | wc -l | xargs)
-  BADCOMMITS=$(echo "$GITARY" | awk -F '|' '{ if($4 != "G"){print $1;} }' | wc -l | xargs)
-  GOODCOMMITS=$(echo "$GITARY" | awk -F '|' '{ if($4 == "G"){print $1;} }' | wc -l | xargs)
-  DEVNAMES=$(echo "$GITARY" | awk -F '|' '{print $2;}'|sort -u)
+# check if there are any commits in git
+if [[ -z $GITARY ]]; then echo "No commits found.  Exiting... "; exit 1; fi
 
-  if [[ $BADCOMMITS -gt $GOODCOMMITS ]]; then 
-	PERCENT=$(bc <<< "scale=4; ($GOODCOMMITS/$BADCOMMITS ) * 100")
-  elif [[ $BADCOMMITS -lt $GOODCOMMITS ]]; then 
-	PERCENT=$(bc <<< "scale=4; ($BADCOMMITS/$GOODCOMMITS ) * 100")
-  fi
-  echo "Total commits: $NUMBERCOMMITS | Signed commits: $GOODCOMMITS | Un-signed commits: $BADCOMMITS"
-  echo "Percentage of commits that have been signed = $PERCENT %"
-  echo "Total number of Developers who have commited is $(echo "$GITARY" | awk -F '|' '{print $2;}'|sort -u|wc -l|xargs)"
-  echo "====================================================="
-  echo
-  echo "Individual Developer Commit Statistics:"
-  DEVARRAY=$(echo "$GITARY" | awk -F '|' '{print $2;}'|sort -u|sed "s/\ /_/g")
-  echo "$DEVARRAY" > ./tempfile
-  for devname in $(<tempfile); do
-        if [[ -n $devname ]]; then
+NUMBERCOMMITS=$(echo "$GITARY" | wc -l | xargs)
+GOODSIGS=$(echo "$GITARY" | awk -F '|' '{ if($4 == "G"){print $1;} }' | wc -l | xargs)
+NOSIGS=$(echo "$GITARY" | awk -F '|' '{ if($4 == "N" || $4 == "B"){print $1;} }' | wc -l | xargs)
+UNKNOWNSIGS=$(echo "$GITARY" | awk -F '|' '{ if($4 == "E" || $4 == "X" || $4 == "Y" || $4 == "U" || $4 == "R"){print $1;} }' | wc -l | xargs)
+DEVNAMES=$(echo "$GITARY" | awk -F '|' '{print $2;}'|sort -u)
+
+PERCENT=$(bc <<< "scale=4; ($GOODSIGS/$NUMBERCOMMITS) * 100")
+PERCENTOTHER=$(bc <<< "scale=4; ($UNKNOWNSIGS/$NUMBERCOMMITS) * 100")
+PERCENTBAD=$(bc <<< "scale=4; ($NOSIGS/$NUMBERCOMMITS) * 100")
+echo 
+echo "====================================================="
+echo -e "Total commits: $NUMBERCOMMITS | ${grn}Verified signed commits:$GOODSIGS${end} | ${yel}Un-verified signed commits: $UNKNOWNSIGS${end} | ${red}Bad or un-signed commits: $NOSIGS${end}"
+echo "====================================================="
+echo "Percentage of commits that have been VERIFIED signed = $PERCENT %"
+echo "Percentage of commits that have been signed but not verifed = $PERCENTOTHER %"
+echo "Percentage of commits that have not been signed or are bad = $PERCENTBAD %"
+echo "Total number of Developers who have commited is $(echo "$GITARY" | awk -F '|' '{print $2;}'|sort -u|wc -l|xargs)"
+echo "====================================================="
+echo
+echo "Individual Developer Commit Statistics:"
+DEVARRAY=$(echo "$GITARY" | awk -F '|' '{print $2;}'|sort -u|sed "s/\ /_/g")
+echo "$DEVARRAY" > ./tempfile
+for devname in $(<tempfile); do
+if [[ -n $devname ]]; then
 		devname2=$(echo $devname | sed "s/\_/ /g")
-		DEVCOMMITNUMBER=$(echo "$GITARY" | grep -i "$devname2" | wc -l | xargs)
+		DEVCOMMITNUMBER=$(echo "$GITARY" | grep -ic "$devname2" | xargs)
 		DEVGOODCOMMITS=$(echo "$GITARY" | grep -i "$devname2" | awk -F '|' '{ if($4 == "G"){print $1,$2,$3,$4;} }' | wc -l | xargs)
-		DEVBADCOMMITS=$(echo "$GITARY" | awk -F '|' '{ if($4 != "G"){print $1,$2,$3,$4;} }' | grep -i "$devname2" | wc -l | xargs)
-		echo "$devname2 = Total commits: $DEVCOMMITNUMBER | Signed commits: $DEVGOODCOMMITS | Un-signed commits: $DEVBADCOMMITS"
+		DEVBADCOMMITS=$(echo "$GITARY" | awk -F '|' '{ if($4 == "N" || $4 == "B"){print $1,$2,$3,$4;} }' | grep -ic "$devname2" | xargs)
+		DEVUNKNOWNSIGS=$(echo "$GITARY" | awk -F '|' '{ if($4 == "E" || $4 == "X" || $4 == "Y" || $4 == "U" || $4 == "R"){print $1,$2,$3,$4;} }' | grep -ic "$devname2" | xargs)
+		echo "$devname2 =		Total commits: $DEVCOMMITNUMBER | ${grn}Verified signed commits: $DEVGOODCOMMITS${end} | ${yel}Un-verified signed commits: $DEVUNKNOWNSIGS${end} | ${red}Bad or un-signed commits: $DEVBADCOMMITS${end}"
 	fi
-  done
+done
 
-  if [[ $clonesuccess = "1" ]]; then cd ../; rm -rf ./git-commit-audit-temp-dir/;fi
+if [[ $clonesuccess = "1" ]]; then cd ../; rm -rf ./git-commit-audit-temp-dir/;fi
 
