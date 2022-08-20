@@ -32,6 +32,10 @@ if [[ -n $1 ]]; then
         git clone "$1" ./git-commit-audit-temp-dir && echo "Git Clone was a success" && export clonesuccess="1"
         if [[ $clonesuccess = "1" ]]; then
                 cd ./git-commit-audit-temp-dir
+		echo
+		echo "${mag}ATTENTION:  Remote Git repositories will show as "Un-verified" and"
+		echo "            won't ever be "Verified" unless you import their keys.${end}"
+		echo
         elif [[ $clonesuccess != "1" ]]; then
                 echo "Git Clone did not work.  Exiting.... "
                 exit 1
@@ -46,18 +50,22 @@ if [[ -z $GITARY ]]; then echo "No commits found.  Exiting... "; exit 1; fi
 NUMBERCOMMITS=$(echo "$GITARY" | wc -l | xargs)
 GOODSIGS=$(echo "$GITARY" | awk -F '|' '{ if($4 == "G"){print $1;} }' | wc -l | xargs)
 NOSIGS=$(echo "$GITARY" | awk -F '|' '{ if($4 == "N" || $4 == "B"){print $1;} }' | wc -l | xargs)
-UNKNOWNSIGS=$(echo "$GITARY" | awk -F '|' '{ if($4 == "E" || $4 == "X" || $4 == "Y" || $4 == "U" || $4 == "R"){print $1;} }' | wc -l | xargs)
+UNKNOWNSIGS=$(echo "$GITARY" | awk -F '|' '{ if($4 == "E" || $4 == "U"){print $1;} }' | wc -l | xargs)
+EXPIREDSIGS=$(echo "$GITARY" | awk -F '|' '{ if($4 == "X" || $4 == "Y" || $4 == "R"){print $1;} }' | wc -l | xargs)
 DEVNAMES=$(echo "$GITARY" | awk -F '|' '{print $2;}'|sort -u)
 
 PERCENT=$(bc <<< "scale=4; ($GOODSIGS/$NUMBERCOMMITS) * 100")
 PERCENTOTHER=$(bc <<< "scale=4; ($UNKNOWNSIGS/$NUMBERCOMMITS) * 100")
+PERCENTEXPIRED=$(bc <<< "scale=4; ($EXPIREDSIGS/$NUMBERCOMMITS) * 100")
 PERCENTBAD=$(bc <<< "scale=4; ($NOSIGS/$NUMBERCOMMITS) * 100")
+
 echo
 echo "====================================================="
-echo -e "Total commits: $NUMBERCOMMITS | ${grn}Verified signed commits:$GOODSIGS${end} | ${yel}Un-verified signed commits: $UNKNOWNSIGS${end} | ${red}Bad or Un-signed commits: $NOSIGS${end}" # | tr ',' '\t'
+echo -e "Total commits: $NUMBERCOMMITS | ${grn}Verified signed commits:$GOODSIGS${end} | ${cyn}Un-verified signed commits: $UNKNOWNSIGS${end} | ${yel}Expired or Revoked: $EXPIREDSIGS | ${red}Bad or Un-signed commits: $NOSIGS${end}" # | tr ',' '\t'
 echo "====================================================="
 echo "${grn}Percentage of commits that have been VERIFIED signed = $PERCENT %${end}"
-echo "${yel}Percentage of commits that have been signed but not verifed = $PERCENTOTHER %${end}"
+echo "${cyn}Percentage of commits that have been signed but not verifed = $PERCENTOTHER %${end}"
+echo "${yel}Percentage of commits that have been signed but revoked or expired = $PERCENTEXPIRED %${end}"
 echo "${red}Percentage of commits that have not been signed or are bad = $PERCENTBAD %${end}"
 echo "Total number of Developers who have commited is $(echo "$GITARY" | awk -F '|' '{print $2;}'|sort -u|wc -l|xargs)"
 echo "====================================================="
@@ -65,15 +73,16 @@ echo
 echo "Individual Developer Commit Statistics:"
 DEVARRAY=$(echo "$GITARY" | awk -F '|' '{print $2;}'|sort -u|sed "s/\ /_/g")
 echo "$DEVARRAY" > ./tempfile
-echo "${blu}Name: ${end}$DEVCOMMITNUMBER, ${grn}Verified${end}, ${yel}Un-verified:${end}, ${red}Bad/Un-signed:${end}" | awk -F',' '{ printf "%-35s %-20s %-30s %-20s\n", $1, $2, $3, $4}'
+echo "${blu}Name: ${end}$DEVCOMMITNUMBER, ${grn}Verified, ${cyn}Un-verified:, ${yel}Expired/Revoked:, ${red}Bad/Un-signed:${end}" | awk -F',' '{ printf "%-35s %-20s %-20s %-20s %-20s\n", $1, $2, $3, $4, $5}'
 for devname in $(<tempfile); do
 if [[ -n $devname ]]; then
                 devname2=$(echo $devname | sed "s/\_/ /g")
                 DEVCOMMITNUMBER=$(echo "$GITARY" | grep -ic "$devname2" | xargs)
                 DEVGOODCOMMITS=$(echo "$GITARY" | grep -i "$devname2" | awk -F '|' '{ if($4 == "G"){print $1,$2,$3,$4;} }' | wc -l | xargs)
+                DEVEXPIREDCOMMITS=$(echo "$GITARY" | grep -i "$devname2" | awk -F '|' '{ if($4 == "X" || $4 == "Y"){print $1,$2,$3,$4;} }' | wc -l | xargs)
                 DEVBADCOMMITS=$(echo "$GITARY" | awk -F '|' '{ if($4 == "N" || $4 == "B"){print $1,$2,$3,$4;} }' | grep -ic "$devname2" | xargs)
-                DEVUNKNOWNSIGS=$(echo "$GITARY" | awk -F '|' '{ if($4 == "E" || $4 == "X" || $4 == "Y" || $4 == "U" || $4 == "R"){print $1,$2,$3,$4;} } ' | grep -ic "$devname2" | xargs)
-                echo "${blu}$devname2, ${grn}$DEVGOODCOMMITS, ${yel}$DEVUNKNOWNSIGS, ${red}$DEVBADCOMMITS${end}"| awk -F',' '{ printf "%-35s %-20s %-20s %-20s\n", $1, $2, $3, $4}'
+                DEVUNKNOWNSIGS=$(echo "$GITARY" | awk -F '|' '{ if($4 == "E" || $4 == "U" || $4 == "R"){print $1,$2,$3,$4;} } ' | grep -ic "$devname2" | xargs)
+                echo "${blu}$devname2, ${grn}$DEVGOODCOMMITS, ${cyn}$DEVUNKNOWNSIGS, ${yel}$DEVEXPIREDCOMMITS, ${red}$DEVBADCOMMITS${end}"| awk -F',' '{ printf "%-35s %-20s %-20s %-20s %-20s\n", $1, $2, $3, $4, $5}'
         fi
 done
 
