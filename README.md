@@ -37,8 +37,8 @@ Audit a remote repository and get developer stats:
 git-commit-audit.sh -d -r https://github.com/facebook/react.git
 ```
 
-## Watch a demo video
-[![Everything Is AWESOME](https://img.youtube.com/vi/StTqXEQ2l-Y/0.jpg)](https://www.youtube.com/watch?v=StTqXEQ2l-Y "Everything Is AWESOME")
+## What the output looks like:
+![Not particularily encouraging](git-commit-audit-termgrab.png)
 
 ## Sponsors 
 Sponsored with 💜  by
