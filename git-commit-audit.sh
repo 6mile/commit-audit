@@ -9,27 +9,39 @@ end=$'\e[0m'
 
 set -e
 
-if [ "$1" == "-h" -o "$1" == "--help" ]; then
-echo "usage: git-commit-audit.sh [-h|--help] [Git URL]" >&2
-echo "See statistics on git commits for a code repository." >&2
-echo "  -h, --help  Display this usage guide." >&2
-echo "  -o, --output Outputs to markdown." >&2
-echo "  Git URL  If you provide an optional url path (via https) to a remote git repository" >&2
-echo "  Example: git-commit-audit.sh https://github.com/CycloneDX/cyclonedx-python" >&2
-echo
-exit 0
-fi
 
-if [ "$1" == "-o" -o "$1" == "--output" ]; then
-echo "Sending data to file."
+for argument in "$@" 
+do 
+	if [ "$1" == "-h" -o "$1" == "--help" ]; then
+	echo "usage: git-commit-audit.sh [-h|-d|-r] [Git URL]" >&2
+	echo "See statistics on git commits for a code repository." >&2
+	echo "  -h,  Display this usage guide." >&2
+	#echo "  -o,  Outputs to markdown." >&2
+	echo "  -d,  Provide git commit statistics about individual developers." >&2
+	echo "  -r,  Use a remote git repository." >&2
+	echo "  Git URL  If you provide an optional url path (via https) to a remote git repository" >&2
+	echo "  Example: git-commit-audit.sh -d -r https://github.com/CycloneDX/cyclonedx-python" >&2
+	echo
+	exit 0
+	elif [[ $argument == "-d" ]]; then 
+		export DEVSTATS="1"; 
+		echo "Showing individual developer commit statistics";
+	elif [[ $argument == "-r" ]]; then 
+		export REMOTEGIT="1"; 
+		echo "Using remote git repository";
+	fi
+	echo $argument | grep -qi '.git' && export GITEXT="1"
+	echo $argument | grep -qi 'https://' && export HTTPPRE="1"
+	if [[ $GITEXT == "1" ]] && [[ $HTTPPRE = "1" ]]; then 
+		export GITTARGET=$argument;
+		echo $GITTARGET;
+	fi
+done
 
-exit 0
-fi
 
-
-if [[ -n $1 ]]; then
+if [[ $REMOTEGIT == "1" ]]; then
         if [[ ! -d ./git-commit-audit-temp-dir ]]; then mkdir ./git-commit-audit-temp-dir;fi
-        git clone "$1" ./git-commit-audit-temp-dir && echo "Git Clone was a success" && export clonesuccess="1"
+        git clone $GITTARGET ./git-commit-audit-temp-dir && echo "Git Clone was a success" && export clonesuccess="1"
         if [[ $clonesuccess = "1" ]]; then
                 cd ./git-commit-audit-temp-dir
 		echo
@@ -61,7 +73,7 @@ PERCENTBAD=$(bc <<< "scale=4; ($NOSIGS/$NUMBERCOMMITS) * 100")
 
 echo
 echo "====================================================="
-echo -e "Total commits: $NUMBERCOMMITS | ${grn}Verified signed commits:$GOODSIGS${end} | ${cyn}Un-verified signed commits: $UNKNOWNSIGS${end} | ${yel}Expired or Revoked: $EXPIREDSIGS | ${red}Bad or Un-signed commits: $NOSIGS${end}" # | tr ',' '\t'
+echo -e "Total commits: $NUMBERCOMMITS | ${grn}Verified signed: $GOODSIGS${end} | ${cyn}Signed but Un-verified: $UNKNOWNSIGS${end} | ${yel}Expired/Revoked signatures: $EXPIREDSIGS | ${red}Bad or Un-signed: $NOSIGS${end}" # | tr ',' '\t'
 echo "====================================================="
 echo "${grn}Percentage of commits that have been VERIFIED signed = $PERCENT %${end}"
 echo "${cyn}Percentage of commits that have been signed but not verifed = $PERCENTOTHER %${end}"
@@ -70,20 +82,23 @@ echo "${red}Percentage of commits that have not been signed or are bad = $PERCEN
 echo "Total number of Developers who have commited is $(echo "$GITARY" | awk -F '|' '{print $2;}'|sort -u|wc -l|xargs)"
 echo "====================================================="
 echo
-echo "Individual Developer Commit Statistics:"
-DEVARRAY=$(echo "$GITARY" | awk -F '|' '{print $2;}'|sort -u|sed "s/\ /_/g")
-echo "$DEVARRAY" > ./tempfile
-echo "${blu}Name: ${end}$DEVCOMMITNUMBER, ${grn}Verified, ${cyn}Un-verified:, ${yel}Expired/Revoked:, ${red}Bad/Un-signed:${end}" | awk -F',' '{ printf "%-35s %-20s %-20s %-20s %-20s\n", $1, $2, $3, $4, $5}'
-for devname in $(<tempfile); do
-if [[ -n $devname ]]; then
-                devname2=$(echo $devname | sed "s/\_/ /g")
-                DEVCOMMITNUMBER=$(echo "$GITARY" | grep -ic "$devname2" | xargs)
-                DEVGOODCOMMITS=$(echo "$GITARY" | grep -i "$devname2" | awk -F '|' '{ if($4 == "G"){print $1,$2,$3,$4;} }' | wc -l | xargs)
-                DEVEXPIREDCOMMITS=$(echo "$GITARY" | grep -i "$devname2" | awk -F '|' '{ if($4 == "X" || $4 == "Y"){print $1,$2,$3,$4;} }' | wc -l | xargs)
-                DEVBADCOMMITS=$(echo "$GITARY" | awk -F '|' '{ if($4 == "N" || $4 == "B"){print $1,$2,$3,$4;} }' | grep -ic "$devname2" | xargs)
-                DEVUNKNOWNSIGS=$(echo "$GITARY" | awk -F '|' '{ if($4 == "E" || $4 == "U" || $4 == "R"){print $1,$2,$3,$4;} } ' | grep -ic "$devname2" | xargs)
-                echo "${blu}$devname2, ${grn}$DEVGOODCOMMITS, ${cyn}$DEVUNKNOWNSIGS, ${yel}$DEVEXPIREDCOMMITS, ${red}$DEVBADCOMMITS${end}"| awk -F',' '{ printf "%-35s %-20s %-20s %-20s %-20s\n", $1, $2, $3, $4, $5}'
-        fi
-done
+
+if [[ $DEVSTATS == "1" ]]; then 
+	echo "Individual Developer Commit Statistics:"
+	DEVARRAY=$(echo "$GITARY" | awk -F '|' '{print $2;}'|sort -u|sed "s/\ /_/g")
+	echo "$DEVARRAY" > ./tempfile
+	echo "${blu}Name: ${end}$DEVCOMMITNUMBER, ${grn}Verified, ${cyn}Un-verified:, ${yel}Expired/Revoked:, ${red}Bad/Un-signed:${end}" | awk -F',' '{ printf "%-35s %-20s %-20s %-20s %-20s\n", $1, $2, $3, $4, $5}'
+	for devname in $(<tempfile); do
+		if [[ -n $devname ]]; then
+                	devname2=$(echo $devname | sed "s/\_/ /g")
+                	DEVCOMMITNUMBER=$(echo "$GITARY" | grep -ic "$devname2" | xargs)
+                	DEVGOODCOMMITS=$(echo "$GITARY" | grep -i "$devname2" | awk -F '|' '{ if($4 == "G"){print $1,$2,$3,$4;} }' | wc -l | xargs)
+                	DEVEXPIREDCOMMITS=$(echo "$GITARY" | grep -i "$devname2" | awk -F '|' '{ if($4 == "X" || $4 == "Y"){print $1,$2,$3,$4;} }' | wc -l | xargs)
+                	DEVBADCOMMITS=$(echo "$GITARY" | awk -F '|' '{ if($4 == "N" || $4 == "B"){print $1,$2,$3,$4;} }' | grep -ic "$devname2" | xargs)
+                	DEVUNKNOWNSIGS=$(echo "$GITARY" | awk -F '|' '{ if($4 == "E" || $4 == "U" || $4 == "R"){print $1,$2,$3,$4;} } ' | grep -ic "$devname2" | xargs)
+                	echo "${blu}$devname2, ${grn}$DEVGOODCOMMITS, ${cyn}$DEVUNKNOWNSIGS, ${yel}$DEVEXPIREDCOMMITS, ${red}$DEVBADCOMMITS${end}"| awk -F',' '{ printf "%-35s %-20s %-20s %-20s %-20s\n", $1, $2, $3, $4, $5}'
+        	fi
+	done
+fi
 
 if [[ $clonesuccess = "1" ]]; then cd ../; rm -rf ./git-commit-audit-temp-dir/;fi
