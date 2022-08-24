@@ -7,7 +7,7 @@ mag=$'\e[1;35m'
 cyn=$'\e[1;36m'
 end=$'\e[0m'
 
-set -e
+#set -e
 
 
 for argument in "$@" 
@@ -25,29 +25,24 @@ do
 	exit 0
 	elif [[ $argument == "-d" ]]; then 
 		export DEVSTATS="1"; 
-		echo "Showing individual developer commit statistics";
 	elif [[ $argument == "-r" ]]; then 
 		export REMOTEGIT="1"; 
-		echo "Using remote git repository";
 	fi
 	echo $argument | grep -qi '.git' && export GITEXT="1"
 	echo $argument | grep -qi 'https://' && export HTTPPRE="1"
 	if [[ $GITEXT == "1" ]] && [[ $HTTPPRE = "1" ]]; then 
 		export GITTARGET=$argument;
-		echo $GITTARGET;
 	fi
 done
 
 
 if [[ $REMOTEGIT == "1" ]]; then
         if [[ ! -d ./git-commit-audit-temp-dir ]]; then mkdir ./git-commit-audit-temp-dir;fi
-        git clone $GITTARGET ./git-commit-audit-temp-dir && echo "Git Clone was a success" && export clonesuccess="1"
+        git clone $GITTARGET ./git-commit-audit-temp-dir > /dev/null 2>&1 && export clonesuccess="1"
         if [[ $clonesuccess = "1" ]]; then
                 cd ./git-commit-audit-temp-dir
 		echo
-		echo "${mag}ATTENTION:  Remote Git repositories will show as "Un-verified" and"
-		echo "            won't ever be "Verified" unless you import their keys.${end}"
-		echo
+		echo "${mag}ATTENTION: Remote Git repos will never show as ${grn}VERIFIED${mag} unless you import their keys.${end}"
         elif [[ $clonesuccess != "1" ]]; then
                 echo "Git Clone did not work.  Exiting.... "
                 exit 1
@@ -71,23 +66,18 @@ PERCENTOTHER=$(bc <<< "scale=4; ($UNKNOWNSIGS/$NUMBERCOMMITS) * 100")
 PERCENTEXPIRED=$(bc <<< "scale=4; ($EXPIREDSIGS/$NUMBERCOMMITS) * 100")
 PERCENTBAD=$(bc <<< "scale=4; ($NOSIGS/$NUMBERCOMMITS) * 100")
 
-echo
-echo "====================================================="
-echo -e "Total commits: $NUMBERCOMMITS | ${grn}Verified signed: $GOODSIGS${end} | ${cyn}Signed but Un-verified: $UNKNOWNSIGS${end} | ${yel}Expired/Revoked signatures: $EXPIREDSIGS | ${red}Bad or Un-signed: $NOSIGS${end}" # | tr ',' '\t'
-echo "====================================================="
-echo "${grn}Percentage of commits that have been VERIFIED signed = $PERCENT %${end}"
-echo "${cyn}Percentage of commits that have been signed but not verifed = $PERCENTOTHER %${end}"
-echo "${yel}Percentage of commits that have been signed but revoked or expired = $PERCENTEXPIRED %${end}"
-echo "${red}Percentage of commits that have not been signed or are bad = $PERCENTBAD %${end}"
+echo 
 echo "Total number of Developers who have commited is $(echo "$GITARY" | awk -F '|' '{print $2;}'|sort -u|wc -l|xargs)"
-echo "====================================================="
-echo
+echo "STATUS , ${grn}VERIFIED, ${cyn}UN-VERIFIED:, ${yel}EXPIRED/REVOKED:, ${red}BAD/UN-SIGNED:${end}" | awk -F',' '{ printf "%-25s %-20s %-20s %-20s %-20s\n", $1, $2, $3, $4, $5}'
+echo "Total Commits: , ${grn}$GOODSIGS, ${cyn}$UNKNOWNSIGS, ${yel}$EXPIREDSIGS, ${red}$NOSIGS${end}" | awk -F',' '{ printf "%-25s %-20s %-20s %-24s %-20s\n", $1, $2, $3, $4, $5}'
+echo "Percentages: , ${grn}$PERCENT, ${cyn}$PERCENTOTHER, ${yel}$PERCENTEXPIRED, ${red}$PERCENTBAD${end}" | awk -F',' '{ printf "%-25s %-20s %-20s %-24s %-20s\n", $1, $2, $3, $4, $5}'
+echo 
 
 if [[ $DEVSTATS == "1" ]]; then 
 	echo "Individual Developer Commit Statistics:"
 	DEVARRAY=$(echo "$GITARY" | awk -F '|' '{print $2;}'|sort -u|sed "s/\ /_/g")
 	echo "$DEVARRAY" > ./tempfile
-	echo "${blu}Name: ${end}$DEVCOMMITNUMBER, ${grn}Verified, ${cyn}Un-verified:, ${yel}Expired/Revoked:, ${red}Bad/Un-signed:${end}" | awk -F',' '{ printf "%-35s %-20s %-20s %-20s %-20s\n", $1, $2, $3, $4, $5}'
+	echo "${blu}NAME: ${end}$DEVCOMMITNUMBER, ${grn}VERIFIED, ${cyn}UN-VERIFIED:, ${yel}EXPIRED/REVOKED:, ${red}BAD/UN-SIGNED:${end}" | awk -F',' '{ printf "%-36s %-20s %-20s %-20s %-20s\n", $1, $2, $3, $4, $5}'
 	for devname in $(<tempfile); do
 		if [[ -n $devname ]]; then
                 	devname2=$(echo $devname | sed "s/\_/ /g")
@@ -96,7 +86,7 @@ if [[ $DEVSTATS == "1" ]]; then
                 	DEVEXPIREDCOMMITS=$(echo "$GITARY" | grep -i "$devname2" | awk -F '|' '{ if($4 == "X" || $4 == "Y"){print $1,$2,$3,$4;} }' | wc -l | xargs)
                 	DEVBADCOMMITS=$(echo "$GITARY" | awk -F '|' '{ if($4 == "N" || $4 == "B"){print $1,$2,$3,$4;} }' | grep -ic "$devname2" | xargs)
                 	DEVUNKNOWNSIGS=$(echo "$GITARY" | awk -F '|' '{ if($4 == "E" || $4 == "U" || $4 == "R"){print $1,$2,$3,$4;} } ' | grep -ic "$devname2" | xargs)
-                	echo "${blu}$devname2, ${grn}$DEVGOODCOMMITS, ${cyn}$DEVUNKNOWNSIGS, ${yel}$DEVEXPIREDCOMMITS, ${red}$DEVBADCOMMITS${end}"| awk -F',' '{ printf "%-35s %-20s %-20s %-20s %-20s\n", $1, $2, $3, $4, $5}'
+                	echo "${blu}$devname2, ${grn}$DEVGOODCOMMITS, ${cyn}$DEVUNKNOWNSIGS, ${yel}$DEVEXPIREDCOMMITS, ${red}$DEVBADCOMMITS${end}"| awk -F',' '{ printf "%-32s %-20s %-20s %-24s %-20s\n", $1, $2, $3, $4, $5}'
         	fi
 	done
 fi

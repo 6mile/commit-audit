@@ -1,4 +1,4 @@
-# git-commit-audit
+# git-auditor
 This bash script will "audit" the status of git commit signatures:
 
 * Works on local or remote git repositories
@@ -10,35 +10,35 @@ This bash script will "audit" the status of git commit signatures:
 Get help
 
 ```
-git-commit-audit.sh -h
+git-auditor.sh -h
 ```
 
 Run in local directory that has git repo:
 
 ```
-git-commit-audit.sh
+git-auditor.sh
 ```
 
 Audity repo and get statistics on individual developers:
 
 ```
-git-commit-audit.sh -d
+git-auditor.sh -d
 ```
 
 Audit a remote repository:
 
 ```
-git-commit-audit.sh -r https://github.com/facebook/react.git
+git-auditor.sh -r https://github.com/facebook/react.git
 ```
 
 Audit a remote repository and get developer stats:
 
 ```
-git-commit-audit.sh -d -r https://github.com/facebook/react.git
+git-auditor.sh -d -r https://github.com/facebook/react.git
 ```
 
 ## What the output looks like:
-![Not particularily encouraging](git-commit-audit-termgrab.png)
+![Not particularily encouraging](git-auditor-termgrab.png)
 
 ## Sponsors 
 Sponsored with 💜  by
