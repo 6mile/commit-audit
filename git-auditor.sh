@@ -13,23 +13,27 @@ end=$'\e[0m'
 for argument in "$@" 
 do 
 	if [ "$1" == "-h" -o "$1" == "--help" ]; then
-	echo "usage: git-commit-audit.sh [-h|-d|-r] [Git URL]" >&2
+	echo "usage: git-auditor.sh [ -h | -d | -s | -r ] [Git URL]" >&2
 	echo "See statistics on git commits for a code repository." >&2
 	echo "  -h,  Display this usage guide." >&2
 	#echo "  -o,  Outputs to markdown." >&2
 	echo "  -d,  Provide git commit statistics about individual developers." >&2
+	echo "  -s,  Display statistics only.  This is good for mass scanning of repos." >&2
 	echo "  -r,  Use a remote git repository." >&2
 	echo "  Git URL  If you provide an optional url path (via https) to a remote git repository" >&2
-	echo "  Example: git-commit-audit.sh -d -r https://github.com/CycloneDX/cyclonedx-python" >&2
+	echo "  Example: git-auditor.sh -d -r https://github.com/CycloneDX/cyclonedx-python" >&2
 	echo
 	exit 0
 	elif [[ $argument == "-d" ]]; then 
 		export DEVSTATS="1"; 
 	elif [[ $argument == "-r" ]]; then 
 		export REMOTEGIT="1"; 
+	elif [[ $argument == "-s" ]]; then 
+		export GITSTATS="1"; 
 	fi
 	echo $argument | grep -qi '.git' && export GITEXT="1"
 	echo $argument | grep -qi 'https://' && export HTTPPRE="1"
+	echo $argument | grep -qi 'http://' && export HTTPPRE="1" && export NOENCRYPTION="1"
 	if [[ $GITEXT == "1" ]] && [[ $HTTPPRE = "1" ]]; then 
 		export GITTARGET=$argument;
 	fi
@@ -66,6 +70,17 @@ PERCENTOTHER=$(bc <<< "scale=4; ($UNKNOWNSIGS/$NUMBERCOMMITS) * 100")
 PERCENTEXPIRED=$(bc <<< "scale=4; ($EXPIREDSIGS/$NUMBERCOMMITS) * 100")
 PERCENTBAD=$(bc <<< "scale=4; ($NOSIGS/$NUMBERCOMMITS) * 100")
 
+
+if [[ $GITSTATS == "1" ]] && [[ $REMOTEGIT == "1" ]]; then
+	echo "TARGET=$GITTARGET,VERIFIED=$PERCENT,UN-VERIFIED=$PERCENTOTHER,EXPIRED/REVOKED=$PERCENTEXPIRED,BAD=$PERCENTBAD"	
+	# Clean up local repos
+	if [[ $clonesuccess = "1" ]]; then cd ../; rm -rf ./git-commit-audit-temp-dir/;fi
+	exit 0
+elif [[ $GITSTATS == "1" ]] && [[ $REMOTEGIT != "1" ]]; then
+	echo "Must provide remote GIT url.  Exiting...  "
+	exit 1
+fi
+
 echo 
 echo "Total number of Developers who have commited is $(echo "$GITARY" | awk -F '|' '{print $2;}'|sort -u|wc -l|xargs)"
 echo "STATUS , ${grn}VERIFIED, ${cyn}UN-VERIFIED:, ${yel}EXPIRED/REVOKED:, ${red}BAD/UN-SIGNED:${end}" | awk -F',' '{ printf "%-25s %-20s %-20s %-20s %-20s\n", $1, $2, $3, $4, $5}'
@@ -73,7 +88,7 @@ echo "Total Commits: , ${grn}$GOODSIGS, ${cyn}$UNKNOWNSIGS, ${yel}$EXPIREDSIGS, 
 echo "Percentages: , ${grn}$PERCENT, ${cyn}$PERCENTOTHER, ${yel}$PERCENTEXPIRED, ${red}$PERCENTBAD${end}" | awk -F',' '{ printf "%-25s %-20s %-20s %-24s %-20s\n", $1, $2, $3, $4, $5}'
 echo 
 
-if [[ $DEVSTATS == "1" ]]; then 
+if [[ $DEVSTATS == "1" ]] && [[ $GITSTATS != "1" ]]; then 
 	echo "Individual Developer Commit Statistics:"
 	DEVARRAY=$(echo "$GITARY" | awk -F '|' '{print $2;}'|sort -u|sed "s/\ /_/g")
 	echo "$DEVARRAY" > ./tempfile
@@ -91,4 +106,5 @@ if [[ $DEVSTATS == "1" ]]; then
 	done
 fi
 
+# Clean up local repos
 if [[ $clonesuccess = "1" ]]; then cd ../; rm -rf ./git-commit-audit-temp-dir/;fi
