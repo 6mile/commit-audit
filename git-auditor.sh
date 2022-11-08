@@ -35,12 +35,12 @@ do
 	echo $argument | grep -qi 'https://' && export HTTPPRE="1"
 	echo $argument | grep -qi 'http://' && export HTTPPRE="1" && export NOENCRYPTION="1"
 	if [[ $GITEXT == "1" ]] && [[ $HTTPPRE = "1" ]]; then 
-		export GITTARGET=$argument;
+		export GITTARGET=\"$argument\";
 	fi
 done
 
 
-if [[ $REMOTEGIT == "1" ]]; then
+if [[ $REMOTEGIT == "1" ]] && [[ $GITSTATS != "1" ]]; then
         if [[ ! -d ./git-commit-audit-temp-dir ]]; then mkdir ./git-commit-audit-temp-dir;fi
         git clone $GITTARGET ./git-commit-audit-temp-dir > /dev/null 2>&1 && export clonesuccess="1"
         if [[ $clonesuccess = "1" ]]; then
