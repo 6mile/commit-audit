@@ -35,18 +35,25 @@ do
 	echo $argument | grep -qi 'https://' && export HTTPPRE="1"
 	echo $argument | grep -qi 'http://' && export HTTPPRE="1" && export NOENCRYPTION="1"
 	if [[ $GITEXT == "1" ]] && [[ $HTTPPRE = "1" ]]; then 
-		export GITTARGET=\"$argument\";
+		export GITTARGET="$argument";
 	fi
 done
 
+# exit 1 if DEVSTATS and GITSTATS are both 1
+if [[ $DEVSTATS == "1" ]] && [[ $GITSTATS == "1" ]]; then
+	echo "ERROR: Can't use -d and -s together.  Choose ONE and start again!"
+	exit 1
+fi
 
-if [[ $REMOTEGIT == "1" ]] && [[ $GITSTATS != "1" ]]; then
+
+#if [[ $REMOTEGIT == "1" ]] && [[ $GITSTATS != "1" ]]; then
+if [[ $REMOTEGIT == "1" ]]; then
         if [[ ! -d ./git-commit-audit-temp-dir ]]; then mkdir ./git-commit-audit-temp-dir;fi
         git clone $GITTARGET ./git-commit-audit-temp-dir > /dev/null 2>&1 && export clonesuccess="1"
         if [[ $clonesuccess = "1" ]]; then
                 cd ./git-commit-audit-temp-dir
-		echo
-		echo "${mag}ATTENTION: Remote Git repos will never show as ${grn}VERIFIED${mag} unless you import their keys.${end}"
+		if [[ $GITSTATS != "1" ]]; then echo;fi
+		if [[ $GITSTATS != "1" ]]; then echo "${mag}ATTENTION: Remote Git repos will never show as ${grn}VERIFIED${mag} unless you import their keys.${end}";fi
         elif [[ $clonesuccess != "1" ]]; then
                 echo "Git Clone did not work.  Exiting.... "
                 exit 1
@@ -72,7 +79,7 @@ PERCENTBAD=$(bc <<< "scale=4; ($NOSIGS/$NUMBERCOMMITS) * 100")
 
 
 if [[ $GITSTATS == "1" ]] && [[ $REMOTEGIT == "1" ]]; then
-	echo "TARGET=$GITTARGET,VERIFIED=$PERCENT,UN-VERIFIED=$PERCENTOTHER,EXPIRED/REVOKED=$PERCENTEXPIRED,BAD=$PERCENTBAD"	
+	echo "TARGET=\"$GITTARGET\",VERIFIED=$PERCENT,UN-VERIFIED=$PERCENTOTHER,EXPIRED/REVOKED=$PERCENTEXPIRED,BAD=$PERCENTBAD"	
 	# Clean up local repos
 	if [[ $clonesuccess = "1" ]]; then cd ../; rm -rf ./git-commit-audit-temp-dir/;fi
 	exit 0
@@ -108,3 +115,6 @@ fi
 
 # Clean up local repos
 if [[ $clonesuccess = "1" ]]; then cd ../; rm -rf ./git-commit-audit-temp-dir/;fi
+
+# this is the correct sed to remove any number of trailing zeros:
+# sed 's/\.*00*$//'
