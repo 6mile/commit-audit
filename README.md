@@ -55,10 +55,10 @@ commit-audit.sh -c -r https://github.com/facebook/react.git
 ## What the output looks like
 
 ### Developer statistics on remote repo:
-![Not particularily encouraging](commit-audit-termgrab-d-r.png)
+![Not particularily encouraging](images/commit-audit-termgrab-d-r.png)
 
 ### Generate CSV repot on list of repos:
-![Little less not particularily encouraging](commit-audit-termgrab-c-r.png)
+![Little less not particularily encouraging](images/commit-audit-termgrab-c-r.png)
 
 ## Sponsors 
 Sponsored with 💜  by
