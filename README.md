@@ -1,8 +1,9 @@
-# git-auditor
+# commit-audit
 This bash script will "audit" the status of git commit signatures:
 
 * Works on local or remote git repositories
 * Shows statistics for the whole repo by default
+* Generate simple CSV report on remote repos
 * Optionally will show statistics for all individual contributors
 
 ## Usage Documentation
@@ -10,35 +11,45 @@ This bash script will "audit" the status of git commit signatures:
 Get help
 
 ```
-git-auditor.sh -h
+commit-audit.sh -h
 ```
 
 Run in local directory that has git repo:
 
 ```
-git-auditor.sh
+commit-audit.sh
 ```
 
-Audity repo and get statistics on individual developers:
+Audit repo and get statistics on individual developers:
 
 ```
-git-auditor.sh -d
+commit-audit.sh -d
 ```
 
 Audit a remote repository:
 
 ```
-git-auditor.sh -r https://github.com/facebook/react.git
+commit-audit.sh -r https://github.com/facebook/react.git
 ```
 
 Audit a remote repository and get developer stats:
 
 ```
-git-auditor.sh -d -r https://github.com/facebook/react.git
+commit-audit.sh -d -r https://github.com/facebook/react.git
 ```
 
-## What the output looks like:
-![Not particularily encouraging](git-auditor-termgrab.png)
+Get a report in CSV format.  This is great for mass scanning git repos:
+
+```
+commit-audit.sh -c -r https://github.com/facebook/react.git
+```
+
+## What the output looks like
+
+### Developer statistics on remote repo:
+![Not particularily encouraging](commit-audit-termgrab.png)
+
+### Generate CSV repot on list of repos:
 
 ## Sponsors 
 Sponsored with 💜  by
