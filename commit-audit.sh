@@ -97,8 +97,8 @@ fi
 echo 
 echo "Total number of commits is $NUMBERCOMMITS. Total number of Developers who have commited is $(echo "$GITARY" | awk -F '|' '{print $2;}'|sort -u|wc -l|xargs)"
 echo "STATUS , ${grn}TRUE-VERIFIED:,  ${cyn}UN-VERIFIED:, ${yel}GITHUB-SIGNED:, ${ora}EXPIRED/REVOKED:, ${red}BAD/UN-SIGNED:${end}" | awk -F',' '{ printf "%-25s %-22s %-20s %-20s %-20s %-20s\n", $1, $2, $3, $4, $5, $6}'
-echo "Total Commits: , ${grn}$GOODSIGS, ${cyn}$UNKNOWNSIGS, ${yel}$GHSIGS, ${ora}$EXPIREDSIGS, ${red}$NOSIGS${end}" | awk -F',' '{ printf "%-29s %-23s %-23s %-21s %-20s %-20s\n", $1, $2, $3, $4, $5, $6}'
-echo "Percentages: , ${grn}$PERCENT, ${cyn}$PERCENTOTHER, ${yel}$PERCENTGITHUB, ${ora}$PERCENTEXPIRED, ${red}$PERCENTBAD${end}" | awk -F',' '{ printf "%-29s %-23s %-23s %-21s %-20s %-20s\n", $1, $2, $3, $4, $5, $6}'
+echo "Total Commits: , ${grn}$GOODSIGS, ${cyn}$UNKNOWNSIGS, ${yel}$GHSIGS, ${ora}$EXPIREDSIGS, ${red}$NOSIGS${end}" | awk -F',' '{ printf "%-29s %-23s %-20s %-24s %-20s %-20s\n", $1, $2, $3, $4, $5, $6}'
+echo "Percentages: , ${grn}$PERCENT, ${cyn}$PERCENTOTHER, ${yel}$PERCENTGITHUB, ${ora}$PERCENTEXPIRED, ${red}$PERCENTBAD${end}" | awk -F',' '{ printf "%-29s %-23s %-20s %-24s %-20s %-20s\n", $1, $2, $3, $4, $5, $6}'
 echo 
 
 if [[ $DEVSTATS == "1" ]] && [[ $CSV != "1" ]]; then 
