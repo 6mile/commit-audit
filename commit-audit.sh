@@ -126,3 +126,5 @@ if [[ $clonesuccess = "1" ]]; then cd ../; rm -rf ./git-commit-audit-temp-dir/;f
 # this is the correct sed to remove any number of trailing zeros:
 # sed 's/\.*00*$//'
 # other possibility: '/\./ s/\.\{0,1\}0\{1,\}$//'
+
+BOOM!
